@@ -7,6 +7,10 @@ roadImg.src = "./images/road.png";
 const carImg = new Image();
 carImg.src = "./images/car.png";
 
+const carCrashAudio = new Audio();
+carCrashAudio.src = "./sounds/car-crash.wav";
+carCrashAudio.volume = 0.5;
+
 class Component {
   constructor(x, y, width, height, speed) {
     this.x = x;
@@ -121,6 +125,8 @@ class Game {
 
     if (crashed) {
       cancelAnimationFrame(this.animationId);
+
+      carCrashAudio.play();
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.font = "40px Arial";
