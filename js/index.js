@@ -1,15 +1,6 @@
+const gameBoard = document.getElementById("game-board");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-
-const roadImg = new Image();
-roadImg.src = "./images/road.png";
-
-const carImg = new Image();
-carImg.src = "./images/car.png";
-
-const carCrashAudio = new Audio();
-carCrashAudio.src = "./sounds/car-crash.wav";
-carCrashAudio.volume = 0.5;
 
 class Component {
   constructor(x, y, width, height, speed) {
@@ -63,14 +54,17 @@ class Game {
   constructor(background, player) {
     this.background = background;
     this.player = player;
-    this.animationId;
+    this.animationId = 0;
+    this.obstacles = [];
     this.frames = 0;
     this.score = 0;
-    this.obstacles = [];
+    this.carCrashSound = new Audio();
+    this.carCrashSound.src = "./sounds/car-crash.wav";
+    this.carCrashSound.volume = 0.1;
   }
 
   updateGame = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    this.clear();
 
     this.background.move();
     this.background.draw();
@@ -87,12 +81,13 @@ class Game {
     this.checkGameOver();
   };
 
+  clear = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
   updateObstacles = () => {
     this.frames++;
-
-    if (this.frames % 30 === 0) {
-      this.score++;
-    }
+    this.score = Math.floor(this.frames / 10);
 
     this.obstacles.map((obstacle) => {
       obstacle.move();
@@ -100,22 +95,23 @@ class Game {
     });
 
     if (this.frames % 90 === 0) {
-      let y = 0;
+      const minWidth = 100;
+      const maxWidth = 200;
+      const width =
+        Math.floor(Math.random() * (maxWidth - minWidth + 1)) + minWidth;
 
-      let minWidth = 100;
-      let maxWidth = 200;
-      let width = Math.floor(
-        Math.random() * (maxWidth - minWidth + 1) + minWidth
-      );
+      const minX = 40;
+      const maxX = canvas.width - 40 - width;
+      const x = Math.floor(Math.random() * (maxX - minX + 1)) + minX;
 
-      let minX = 40;
-      let maxX = canvas.width - 40 - width;
-      let x = Math.floor(Math.random() * (maxX - minX + 1) + minX);
-
-      const obstacle = new Obstacle(x, y, width, 20, 3);
+      const obstacle = new Obstacle(x, 0, width, 30, 2);
 
       this.obstacles.push(obstacle);
     }
+  };
+
+  startGame = () => {
+    this.animationId = requestAnimationFrame(this.updateGame);
   };
 
   checkGameOver = () => {
@@ -126,7 +122,7 @@ class Game {
     if (crashed) {
       cancelAnimationFrame(this.animationId);
 
-      carCrashAudio.play();
+      this.carCrashSound.play();
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.font = "40px Arial";
@@ -147,39 +143,13 @@ class Game {
   };
 }
 
-class Background {
-  constructor(x, y, width, height) {
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
-    this.speed = 3;
-  }
-
-  move() {
-    this.y += this.speed;
-
-    if (this.y >= canvas.height) {
-      this.y = 0;
-    }
-  }
-
-  draw() {
-    ctx.drawImage(roadImg, this.x, this.y, this.width, this.height);
-
-    if (this.speed >= 0) {
-      ctx.drawImage(
-        roadImg,
-        this.x,
-        this.y - canvas.height,
-        this.width,
-        this.height
-      );
-    }
-  }
-}
-
 class Player extends Component {
+  constructor(x, y, widht, height, speed) {
+    super(x, y, widht, height, speed);
+    this.img = new Image();
+    this.img.src = "./images/car.png";
+  }
+
   move() {
     this.x += this.speed;
 
@@ -193,7 +163,41 @@ class Player extends Component {
   }
 
   draw() {
-    ctx.drawImage(carImg, this.x, this.y, this.width, this.height);
+    ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+  }
+}
+
+class Background {
+  constructor(x, y, width, height) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+    this.speed = 2;
+    this.img = new Image();
+    this.img.src = "./images/road.png";
+  }
+
+  draw() {
+    ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+
+    if (this.speed >= 0) {
+      ctx.drawImage(
+        this.img,
+        this.x,
+        this.y - canvas.height,
+        this.width,
+        this.height
+      );
+    }
+  }
+
+  move() {
+    this.y += this.speed;
+
+    if (this.y >= canvas.height) {
+      this.y = 0;
+    }
   }
 }
 
@@ -203,25 +207,34 @@ window.onload = () => {
   };
 
   function startGame() {
+    // Exibir o canvas
+    gameBoard.style.display = "block";
+
+    // Instanciar a classe principal do jogo e inicializar a imagem de fundo e o jogador
     const game = new Game(
       new Background(0, 0, canvas.width, canvas.height),
       new Player(canvas.width / 2 - 25, canvas.height - 150, 50, 100, 0)
     );
-
-    game.updateGame();
+    game.startGame();
 
     document.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowLeft") {
-        game.player.speed = -4;
+      if (event.key === "ArrowLeft" || event.key === "a") {
+        game.player.speed = -2;
       }
 
-      if (event.key === "ArrowRight") {
-        game.player.speed = 4;
+      if (event.key === "ArrowRight" || event.key === "d") {
+        game.player.speed = 2;
       }
     });
 
-    document.addEventListener("keyup", () => {
-      game.player.speed = 0;
+    document.addEventListener("keyup", (event) => {
+      if (event.key === "ArrowLeft" || event.key === "a") {
+        game.player.speed = 0;
+      }
+
+      if (event.key === "ArrowRight" || event.key === "d") {
+        game.player.speed = 0;
+      }
     });
   }
 };
